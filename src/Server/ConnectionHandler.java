@@ -1,6 +1,6 @@
 package Server;
 
-import Common.Const;
+import Common.*;
 
 import java.io.IOException;
 import java.net.ServerSocket;

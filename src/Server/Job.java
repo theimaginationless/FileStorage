@@ -1,7 +1,6 @@
 package Server;
 
-import Common.Const;
-import Common.Utils;
+import Common.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -32,8 +31,9 @@ public class Job implements Callable<Integer> {
         while((read = mInputStream.read(buf, 0, buf.length)) != -1) {
             totalReads += read;
             fos.write(buf, 0, read);
-            System.out.println("Reads: " + totalReads);
+            System.out.print("\rReads: " + totalReads);
         }
+        System.out.println();
         fos.flush();
         fos.close();
         return totalReads;

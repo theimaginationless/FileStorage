@@ -1,5 +1,5 @@
 package TestClient;
-import Common.Const;
+import Common.*;
 import java.io.*;
 import java.net.Socket;
 

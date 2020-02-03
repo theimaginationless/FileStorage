@@ -7,12 +7,10 @@ import java.util.concurrent.*;
 public class JobHandler implements Callable<Integer> {
     private InputStream mIs;
     private ExecutorService executorService;
-    private ExecutorService mDataGetterExecutorService;
 
     public JobHandler(InputStream is) {
         mIs = is;
         executorService = Executors.newFixedThreadPool(4);
-        mDataGetterExecutorService = Executors.newFixedThreadPool(4);
     }
 
     @Override
@@ -28,7 +26,7 @@ public class JobHandler implements Callable<Integer> {
         } catch(Exception ex) {
                 ex.printStackTrace();
         } finally {
-            mDataGetterExecutorService.shutdown();
+            System.out.println();
             executorService.shutdown();
             return 0;
         }
