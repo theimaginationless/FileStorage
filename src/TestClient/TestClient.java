@@ -18,7 +18,7 @@ public class TestClient {
             while((read = fis.read(buf, 0, buf.length)) != -1) {
                 readTotal += read;
                 os.write(buf, 0, read);
-                int perc = (int)((double)(readTotal/len) * 100);
+                int perc = (int)((double)readTotal/len * 100);
                 System.out.print("\r" +  perc + "% written");
             }
             System.out.println();
