@@ -6,5 +6,5 @@ public class Const {
     public static final String dbServer = "127.0.0.1";
     public static final String dbName = "FileStorage_OLTP";
     public static final String storagePath = "storage//";
-    public static final int bufferSize = 65536;
+    public static final int bufferSize = 4096;
 }

@@ -4,31 +4,34 @@ package Server;
 import java.io.InputStream;
 import java.util.concurrent.*;
 
-public class JobHandler implements Callable<Integer> {
+public class JobHandler implements Callable<Long> {
     private InputStream mIs;
-    private ExecutorService executorService;
+    //private ExecutorService executorService;
+    private Job mJob;
 
     public JobHandler(InputStream is) {
         mIs = is;
-        executorService = Executors.newFixedThreadPool(4);
+        //executorService = Executors.newFixedThreadPool(4);
     }
 
     @Override
-    public Integer call() {
+    public Long call() {
         try {
-            Future<Integer> writeFileTask = executorService.submit(new Job(mIs));
+            //Future<Long> writeFileTask = executorService.submit(new Job(mIs));
             System.out.println("Waiting for ExecutorService end...");
-            while (!writeFileTask.isDone()) ;
-            System.out.println("ExecutorService finished! " + writeFileTask.get().intValue() + " write!");
-            return writeFileTask.get().intValue();
+            mJob = new Job(mIs);
+            Long result = mJob.start();
+            //writeFileTask.wait();
+            //while (!writeFileTask.isDone()) ;
+            System.out.println("ExecutorService finished! " + result + " write!");
+            return result;
         } catch(SecurityException e) {
             System.out.println(e.getMessage());
         } catch(Exception ex) {
                 ex.printStackTrace();
         } finally {
             System.out.println();
-            executorService.shutdown();
-            return 0;
+            return 0L;
         }
     }
 }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class ConnectionHandler implements Runnable {
 
@@ -17,7 +18,7 @@ public class ConnectionHandler implements Runnable {
     private volatile boolean isRunning;
     private Thread mThread;
     private ServerSocket mServerSocket;
-    private List<Future<Integer>> taskList;
+    private List<Future<Long>> taskList;
 
     ConnectionHandler() {
         try {
@@ -33,11 +34,26 @@ public class ConnectionHandler implements Runnable {
         mThread = new Thread(this);
         mThread.start();
     }
+    
+    private void taskListJanitor() {
+        for (Future<Long> task: taskList) {
+            if(task.isDone() || task.isCancelled()) {
+                taskList.remove(task);
+            }
+        }
+    }
 
     public void stop() throws IOException {
         isRunning = false;
         mServerSocket.close();
         mJobExecutorService.shutdown();
+        try {
+            if(mJobExecutorService.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                mJobExecutorService.shutdownNow();
+            }
+        } catch(InterruptedException ex) {
+            mJobExecutorService.shutdownNow();
+        }
     }
 
     @Override
@@ -48,9 +64,11 @@ public class ConnectionHandler implements Runnable {
             try {
                 System.out.println("Ready for incoming to bar!");
                 Socket incomingConnection = mServerSocket.accept();
+                System.out.println("TEST");
                 JobHandler jobHandler = new JobHandler(incomingConnection.getInputStream());
-                Future<Integer> task = mJobExecutorService.submit(jobHandler);
+                Future<Long> task = mJobExecutorService.submit(jobHandler);
                 taskList.add(task);
+                taskListJanitor();
 
             } catch(IOException e) {
                 System.out.println("IOError! Continue...");

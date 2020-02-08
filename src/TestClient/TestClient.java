@@ -13,7 +13,7 @@ public class TestClient {
             OutputStream os = socket.getOutputStream();
             byte[] buf = new byte[Const.bufferSize];
             int read = 0;
-            int readTotal = 0;
+            long readTotal = 0;
             int len = fis.available();
             while((read = fis.read(buf, 0, buf.length)) != -1) {
                 readTotal += read;

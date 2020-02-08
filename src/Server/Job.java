@@ -8,7 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.Callable;
 
-public class Job implements Callable<Integer> {
+public class Job {
     InputStream mInputStream;
     FileOutputStream fos;
 
@@ -17,8 +17,7 @@ public class Job implements Callable<Integer> {
         mInputStream = is;
     }
 
-    @Override
-    public Integer call() throws Exception {
+    public Long start() throws Exception {
         System.out.println("Start Server.Job");
         File testDir = new File(Const.storagePath);
         if(!testDir.exists()) {
@@ -27,7 +26,7 @@ public class Job implements Callable<Integer> {
         fos = new FileOutputStream(Const.storagePath + Utils.getRandomString(16));
         byte[] buf = new byte[Const.bufferSize];
         int read;
-        int totalReads = 0;
+        long totalReads = 0;
         while((read = mInputStream.read(buf, 0, buf.length)) != -1) {
             totalReads += read;
             fos.write(buf, 0, read);
