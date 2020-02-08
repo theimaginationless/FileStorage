@@ -29,7 +29,7 @@ public class ConnectionHandler implements Runnable {
         }
 
 
-        mJobExecutorService = Executors.newFixedThreadPool(16);
+        mJobExecutorService = Executors.newFixedThreadPool(Const.connectionHandlerThreadPoolSize);
         taskList = new ArrayList<>();
         mThread = new Thread(this);
         mThread.start();
