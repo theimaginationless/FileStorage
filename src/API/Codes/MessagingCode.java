@@ -1,5 +1,5 @@
 package API.Codes;
 
-public enum RequestCode {
+public enum MessagingCode {
     GETOFFSET
 }

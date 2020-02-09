@@ -1,7 +1,9 @@
 package API.Codes;
 
-public enum Errors {
+public enum ServiceError {
     OK,
+    EXIST,
+    NOTEXISTS,
     Failed,
     CONNERROR,
     Critical,

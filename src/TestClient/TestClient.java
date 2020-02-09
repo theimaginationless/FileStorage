@@ -1,4 +1,6 @@
 package TestClient;
+import API.BaseAPI;
+import API.ServerConnection;
 import Common.*;
 import java.io.*;
 import java.net.Socket;
@@ -6,7 +8,9 @@ import java.net.Socket;
 
 public class TestClient {
     public static void main(String args[]) {
-        try {
+        BaseAPI baseApi = new BaseAPI(args[0]);
+        baseApi.writeFile(args[1]);
+        /*try {
             System.out.println("Initialize client-side; Writing data: '" + args[1] + "' to '" + args[0] + "'");
             FileInputStream fis = new FileInputStream(args[1]);
             Socket socket = new Socket(args[0], Const.port);
@@ -21,12 +25,13 @@ public class TestClient {
                 int perc = (int)((double)readTotal/len * 100);
                 System.out.print("\r" +  perc + "% written");
             }
+
             System.out.println();
             os.flush();
             os.close();
             System.out.println("File write!");
         } catch(Throwable ex) {
             ex.printStackTrace();
-        }
+        }*/
     }
 }

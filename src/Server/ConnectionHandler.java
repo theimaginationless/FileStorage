@@ -64,7 +64,7 @@ public class ConnectionHandler implements Runnable {
             try {
                 System.out.println("Ready for incoming to bar!");
                 Socket incomingConnection = mServerSocket.accept();
-                JobHandler jobHandler = new JobHandler(incomingConnection.getInputStream());
+                JobHandler jobHandler = new JobHandler(incomingConnection);
                 Future<Long> task = mJobExecutorService.submit(jobHandler);
                 taskList.add(task);
                 taskListJanitor();

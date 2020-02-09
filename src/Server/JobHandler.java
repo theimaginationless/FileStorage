@@ -2,21 +2,22 @@ package Server;
 
 
 import java.io.InputStream;
+import java.net.Socket;
 import java.util.concurrent.*;
 
 public class JobHandler implements Callable<Long> {
-    private InputStream mIs;
+    private Socket socket;
     private Job mJob;
 
-    public JobHandler(InputStream is) {
-        mIs = is;
+    public JobHandler(Socket socket) {
+        this.socket = socket;
     }
 
     @Override
     public Long call() {
         try {
             System.out.println("Waiting for ExecutorService end...");
-            mJob = new Job(mIs);
+            mJob = new Job(this.socket);
             Long result = mJob.start();
             System.out.println("ExecutorService finished! " + result + " write!");
             return result;
