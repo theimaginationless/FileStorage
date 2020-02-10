@@ -58,7 +58,7 @@ public class BaseAPI {
             int read = 0;
             String hash = Utils.getSHA256(filePath);
             long offset = getOffsetData(hash);
-            long len = fis.available();
+            long len = fis.getChannel().size();
             if(len == offset) {
                 System.out.println("File already exists!");
                 return ServiceError.EXIST;

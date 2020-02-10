@@ -33,16 +33,11 @@ public class Job {
 
     private long getOffset(@NotNull String fileName) {
         long length = 0;
-        try {
-            File checkedFile = new File(Const.storagePath + fileName);
-            if(!checkedFile.exists()) {
-                return 0;
-            }
-            FileInputStream fileInputStream = new FileInputStream(checkedFile);
-            length = fileInputStream.available();
-        } catch(IOException ex) {
-            ex.printStackTrace();
+        File checkedFile = new File(Const.storagePath + fileName);
+        if(!checkedFile.exists()) {
+            return 0;
         }
+        length = checkedFile.length();
         return length;
     }
 
