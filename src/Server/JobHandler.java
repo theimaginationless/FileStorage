@@ -1,7 +1,8 @@
 package Server;
 
 
-import java.io.InputStream;
+import API.Messaging.ResponsePayload;
+
 import java.net.Socket;
 import java.util.concurrent.*;
 
@@ -18,7 +19,7 @@ public class JobHandler implements Callable<Long> {
         try {
             System.out.println("Waiting for ExecutorService end...");
             mJob = new Job(this.socket);
-            Long result = mJob.start();
+            long result = mJob.start();
             System.out.println("ExecutorService finished! " + result + " write!");
             return result;
         } catch(SecurityException e) {

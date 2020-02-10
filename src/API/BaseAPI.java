@@ -2,8 +2,11 @@ package API;
 
 import API.Codes.ServiceError;
 import API.Codes.MessagingCode;
+import API.Messaging.MessageExtractors.OffsetMessageExtractor;
+import API.Messaging.MessagingTransport;
 import API.Messaging.Request;
 import API.Messaging.Response;
+import API.Messaging.ResponsePayload;
 import Common.Const;
 import Common.Utils;
 import org.jetbrains.annotations.NotNull;
@@ -12,7 +15,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.Arrays;
 
 public class BaseAPI {
     private ServerConnection conn;
@@ -41,15 +43,10 @@ public class BaseAPI {
     private long getOffsetData(@NotNull String hash) {
         Request request = new Request(hash, MessagingCode.GETOFFSET);
         long offset = 0;
-        try {
-            Response response = conn.sendRequest(request);
-            offset = (Long) response.getResponse();
-            System.out.println("Get response with id: " + response.getRequestId());
-
-        } catch(IOException ex) {
-            ex.printStackTrace();
-        }
-
+        Response response = MessagingTransport.sendRequest(request, socket);
+        ResponsePayload rp = response.getResponse();
+        OffsetMessageExtractor ome = (OffsetMessageExtractor) MessagingCode.valueOf(response.getMessagingCode().name()).getInstance();
+        offset = ome.getMessage(rp);
         return offset;
     }
 
@@ -61,10 +58,13 @@ public class BaseAPI {
             int read = 0;
             String hash = Utils.getSHA256(filePath);
             long offset = getOffsetData(hash);
-            System.out.println(hash + "; OFFSET: " + offset);
-            long readTotal = offset;
             long len = fis.available();
-            System.out.println("LEN: " + len);
+            if(len == offset) {
+                System.out.println("File already exists!");
+                return ServiceError.EXIST;
+            }
+            System.out.println("Hash: " + hash);
+            long readTotal = offset;
             fis.skip(readTotal);
             while ((read = fis.read(buf, 0, buf.length)) != -1) {
                 readTotal += read;
@@ -76,6 +76,8 @@ public class BaseAPI {
             System.out.println();
             os.flush();
             os.close();
+            fis.close();
+            socket.close();
             if(readTotal != len) {
                 return ServiceError.CONNERROR;
             }
@@ -92,7 +94,7 @@ public class BaseAPI {
         for(int retry = 0; retry < retries + 1; ++retry) {
             System.out.println("Retries: " + retry + "/" + retries);
             error = writeData(filePath);
-            if(error == ServiceError.OK) {
+            if(error != ServiceError.CONNERROR) {
                 break;
             }
             try {

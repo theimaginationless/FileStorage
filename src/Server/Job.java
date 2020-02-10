@@ -1,7 +1,10 @@
 package Server;
 
+import API.Codes.MessagingCode;
+import API.Messaging.MessagingTransport;
 import API.Messaging.Request;
 import API.Messaging.Response;
+import API.Messaging.ResponsePayload;
 import Common.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,7 +15,6 @@ public class Job {
     private InputStream inputStream;
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
-    private FileOutputStream fos;
     private Socket socket;
     private String fileName;
 
@@ -44,21 +46,13 @@ public class Job {
         return length;
     }
 
-    private Request getRequest() {
-        Request request = null;
-        try {
-                Object obj = objectInputStream.readObject();
-                if(obj instanceof Request) {
-                    request = (Request) obj;
-                    System.out.println("Get request with id: " + request.getRequestId().toString());
-                }
-        } catch(ClassNotFoundException | IOException ex) {
-            ex.printStackTrace();
-        }
-        return request;
+    private Response createOffsetResponse(Request request, long offset) {
+        Response response = new Response(request);
+        response.setResponse(new ResponsePayload(offset));
+        return response;
     }
 
-    public Long start() throws Exception {
+    public long start() throws Exception {
         System.out.println("Start Server.Job");
         File testDir = new File(Const.storagePath);
         if(!testDir.exists()) {
@@ -67,18 +61,16 @@ public class Job {
         byte[] buf = new byte[Const.bufferSize];
         int read;
         long totalReads = 0;
-        Request request = getRequest();
+        Request request = MessagingTransport.getRequest(objectInputStream);
+
         switch (request.getMessagingCode()) {
             case GETOFFSET:
                 fileName = request.getHash();
                 totalReads = getOffset(fileName);
-                Response response = new Response(request);
-                response.setResponse(totalReads);
-                objectOutputStream.writeObject(response);
-                objectOutputStream.flush();
+                Response response = createOffsetResponse(request, totalReads);
+                MessagingTransport.sendResponse(response, objectOutputStream);
                 inputStream.skip(totalReads);
         }
-        fos = new FileOutputStream(Const.storagePath + fileName);
         RandomAccessFile raf = new RandomAccessFile(Const.storagePath + fileName, "rw");
         raf.seek(totalReads);
         while((read = inputStream.read(buf, 0, buf.length)) != -1) {
@@ -87,8 +79,11 @@ public class Job {
             System.out.print("\rReads: " + totalReads);
         }
         System.out.println();
-        fos.flush();
-        fos.close();
+        raf.close();
+        objectOutputStream.close();
+        objectInputStream.close();
+        inputStream.close();
+        socket.close();
         return totalReads;
     }
 }

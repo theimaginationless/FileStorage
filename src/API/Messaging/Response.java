@@ -4,11 +4,11 @@ import API.Codes.MessagingCode;
 
 import java.util.UUID;
 
-public class Response<T> implements Messaging {
+public class Response implements Messaging {
     private UUID requestId;
     private MessagingCode messagingCode;
     private String hash;
-    private T data;
+    private ResponsePayload data;
 
     @Override
     public MessagingCode getMessagingCode() {
@@ -30,11 +30,11 @@ public class Response<T> implements Messaging {
         this.requestId = request.getRequestId();
     }
 
-    public void setResponse(T data) {
+    public void setResponse(ResponsePayload data) {
         this.data = data;
     }
 
-    public T getResponse() {
+    public ResponsePayload getResponse() {
         return this.data;
     }
 }
