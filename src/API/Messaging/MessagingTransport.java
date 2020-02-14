@@ -4,8 +4,11 @@ import API.Codes.ServiceError;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.logging.Logger;
 
 public class MessagingTransport {
+    private static Logger logger = Logger.getLogger(MessagingTransport.class.getClass().getName());
+    
     public static ServiceError sendResponse(Response response, ObjectOutputStream objectOutputStream) {
         try {
             objectOutputStream.writeObject(response);
@@ -17,26 +20,19 @@ public class MessagingTransport {
         return ServiceError.OK;
     }
 
-    public static Response sendRequest(Request request, Socket target) {
+    public static Response getResponse(Request request, Socket source) {
         Response response = null;
         try {
-            OutputStream outputStream = target.getOutputStream();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
-            InputStream inputStream = target.getInputStream();
-            objectOutputStream.writeObject(request);
-            objectOutputStream.flush();
+            InputStream inputStream = source.getInputStream();
             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
-            System.out.println("Sent request with id: " + request.getRequestId().toString());
             do {
-                System.out.println("Waiting read object");
                 Object obj = objectInputStream.readObject();
-                System.out.println("Object has been read!");
                 if(obj instanceof Response) {
                     Response tempResponse = (Response) obj;
-                    System.out.println("Get response with id: " + tempResponse.getRequestId().toString());
+                    logger.info("Get response with id: " + tempResponse.getRequestId().toString());
                     if(tempResponse.getRequestId().equals(request.getRequestId())) {
                         response = tempResponse;
-                        System.out.println("Catch it!");
+                        logger.info("It's us response!");
                     }
                 }
             } while(response == null);
@@ -46,13 +42,27 @@ public class MessagingTransport {
         return response;
     }
 
+    public static void sendRequest(Request request, Socket target) {
+        try {
+            OutputStream outputStream = target.getOutputStream();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+
+            objectOutputStream.writeObject(request);
+            objectOutputStream.flush();
+
+            logger.info("Sent request with id: " + request.getRequestId().toString());
+        } catch(IOException ex) {
+            logger.severe(ex.getMessage());
+        }
+    }
+
     public static Request getRequest(ObjectInputStream objectInputStream) {
         Request request = null;
         try {
             Object obj = objectInputStream.readObject();
             if(obj instanceof Request) {
                 request = (Request) obj;
-                System.out.println("Get request with id: " + request.getRequestId().toString());
+                logger.info("Get request with id: " + request.getRequestId().toString());
             }
         } catch(ClassNotFoundException | IOException ex) {
             ex.printStackTrace();

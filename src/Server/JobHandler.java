@@ -17,10 +17,8 @@ public class JobHandler implements Callable<Long> {
     @Override
     public Long call() {
         try {
-            System.out.println("Waiting for ExecutorService end...");
             mJob = new Job(this.socket);
             long result = mJob.start();
-            System.out.println("ExecutorService finished! " + result + " write!");
             return result;
         } catch(SecurityException e) {
             System.out.println(e.getMessage());

@@ -11,9 +11,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 public class ConnectionHandler implements Runnable {
-
+    private static Logger logger = Logger.getLogger(ConnectionHandler.class.getClass().getName());
     private ExecutorService mJobExecutorService;
     private volatile boolean isRunning;
     private Thread mThread;
@@ -24,7 +25,7 @@ public class ConnectionHandler implements Runnable {
         try {
             mServerSocket = new ServerSocket(Const.port);
         } catch(IOException e) {
-            System.err.println("Server.ConnectionHandler initialize error: " + e);
+            logger.severe(e.getMessage());
             return;
         }
 
@@ -36,14 +37,11 @@ public class ConnectionHandler implements Runnable {
     }
     
     private void taskListJanitor() {
-        for (Future<Long> task: taskList) {
-            if(task.isDone() || task.isCancelled()) {
-                taskList.remove(task);
-            }
-        }
+        taskList.removeIf(task -> task.isDone() || task.isCancelled());
     }
 
     public void stop() throws IOException {
+        logger.info("Stopping service...");
         isRunning = false;
         mServerSocket.close();
         mJobExecutorService.shutdown();
@@ -54,15 +52,16 @@ public class ConnectionHandler implements Runnable {
         } catch(InterruptedException ex) {
             mJobExecutorService.shutdownNow();
         }
+        logger.info("Stop service successful!");
     }
 
     @Override
     public void run() {
         isRunning = true;
-        System.out.println("Server.ConnectionHandler is running...");
+        logger.info("Running service...");
         while(isRunning) {
             try {
-                System.out.println("Ready for incoming to bar!");
+                logger.info("Service started! Waiting incoming connections.");
                 Socket incomingConnection = mServerSocket.accept();
                 JobHandler jobHandler = new JobHandler(incomingConnection);
                 Future<Long> task = mJobExecutorService.submit(jobHandler);
@@ -70,9 +69,9 @@ public class ConnectionHandler implements Runnable {
                 taskListJanitor();
 
             } catch(IOException e) {
-                System.out.println("IOError! Continue...");
+                logger.severe("Oops? We have a some IO problem? " + e.getMessage());
             }
         }
-        System.out.println("Shutting down Server.ConnectionHandler...");
+        logger.info("Shutting down service...");
     }
 }

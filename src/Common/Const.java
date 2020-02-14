@@ -8,4 +8,5 @@ public class Const {
     public static final String storagePath = "storage//";
     public static final int bufferSize = 4096;
     public static final int connectionHandlerThreadPoolSize = 6;
+    public static final int retriesOperationCount = 5;
 }

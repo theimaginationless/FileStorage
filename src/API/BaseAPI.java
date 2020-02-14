@@ -10,20 +10,21 @@ import API.Messaging.ResponsePayload;
 import Common.Const;
 import Common.Utils;
 import org.jetbrains.annotations.NotNull;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.logging.Logger;
 
 public class BaseAPI {
+    private static Logger logger = Logger.getLogger(BaseAPI.class.getClass().getName());
     private ServerConnection conn;
     private Socket socket;
     private OutputStream os;
 
     public BaseAPI(@NotNull String addr) {
         conn = new ServerConnection(addr);
-        System.out.println("Initialize client-side; Host server: '" + conn.getAddr() + "'");
+        logger.info("Initialize client-side; Host server: '" + conn.getAddr() + "'");
         initConnection();
     }
 
@@ -32,7 +33,7 @@ public class BaseAPI {
             socket = conn.Connect().getSocket();
             return true;
         } catch(IOException ex) {
-            ex.printStackTrace();
+            logger.severe("Problem with connection. " + ex.getMessage());
         }
         return false;
     }
@@ -43,7 +44,8 @@ public class BaseAPI {
     private long getOffsetData(@NotNull String hash) {
         Request request = new Request(hash, MessagingCode.GETOFFSET);
         long offset = 0;
-        Response response = MessagingTransport.sendRequest(request, socket);
+        MessagingTransport.sendRequest(request, socket);
+        Response response = MessagingTransport.getResponse(request, socket);
         ResponsePayload rp = response.getResponse();
         OffsetMessageExtractor ome = (OffsetMessageExtractor) MessagingCode.valueOf(response.getMessagingCode().name()).getInstance();
         offset = ome.getMessage(rp);
@@ -60,17 +62,35 @@ public class BaseAPI {
             long offset = getOffsetData(hash);
             long len = fis.getChannel().size();
             if(len == offset) {
-                System.out.println("File already exists!");
+                logger.info("File already exists!");
                 return ServiceError.EXIST;
             }
-            System.out.println("Hash: " + hash);
+            logger.info("Hash: " + hash);
             long readTotal = offset;
+            long readTotalPerSec = 0;
+            float avgSpeed = 0;
+            long startTime = 0;
+            long endTime = 0;
+            long avgEta = 0;
             fis.skip(readTotal);
             while ((read = fis.read(buf, 0, buf.length)) != -1) {
+                if(endTime == 0) {
+                    startTime = System.currentTimeMillis();
+                }
+
                 readTotal += read;
+                readTotalPerSec += read;
                 os.write(buf, 0, read);
+                endTime = System.currentTimeMillis();
+                long delta = endTime - startTime;
+                if(delta >= 1000) {
+                    avgSpeed = (float)readTotalPerSec / (1024 * 1024);
+                    avgEta = (len - readTotal) / readTotalPerSec;
+                    endTime = 0;
+                    readTotalPerSec = 0;
+                }
                 int perc = (int) ((double) readTotal / len * 100);
-                System.out.print("\r" + perc + "% written");
+                System.out.printf("\r%d%% written, %.2f MB/s, ETA: %d s.", perc, avgSpeed, avgEta);
             }
 
             System.out.println();
@@ -83,24 +103,24 @@ public class BaseAPI {
             }
             return ServiceError.OK;
         } catch(Throwable ex) {
-            ex.printStackTrace();
+            logger.severe("Operation failed! " + ex.getMessage());
         }
         return ServiceError.Failed;
     }
 
     public ServiceError writeFile(@NotNull String filePath) {
-        int retries = 5;
+        int retries = Const.retriesOperationCount;
         ServiceError error = ServiceError.Unknown;
         for(int retry = 0; retry < retries + 1; ++retry) {
-            System.out.println("Retries: " + retry + "/" + retries);
+            logger.info("Retries: " + retry + "/" + retries);
             error = writeData(filePath);
             if(error != ServiceError.CONNERROR) {
                 break;
             }
             try {
-                Thread.currentThread().sleep(1000);
+                Thread.sleep(1000);
             } catch(InterruptedException ex) {
-                ex.printStackTrace();
+                logger.severe("Operation failed! " + ex.getMessage());
             }
         }
         return error;

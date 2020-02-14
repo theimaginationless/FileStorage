@@ -1,6 +1,4 @@
 package Server;
-
-import API.Codes.MessagingCode;
 import API.Messaging.MessagingTransport;
 import API.Messaging.Request;
 import API.Messaging.Response;
@@ -10,8 +8,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.logging.Logger;
 
 public class Job {
+    private static Logger logger = Logger.getLogger(Job.class.getClass().getName());
     private InputStream inputStream;
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
@@ -19,7 +19,6 @@ public class Job {
     private String fileName;
 
     public Job(Socket socket) {
-        System.out.println("Create Server.Job for incoming connection");
         this.socket = socket;
         try {
             objectOutputStream = new ObjectOutputStream(this.socket.getOutputStream());
@@ -48,7 +47,7 @@ public class Job {
     }
 
     public long start() throws Exception {
-        System.out.println("Start Server.Job");
+        logger.info("Running service...");
         File testDir = new File(Const.storagePath);
         if(!testDir.exists()) {
             testDir.mkdir();

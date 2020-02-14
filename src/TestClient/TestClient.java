@@ -1,9 +1,5 @@
 package TestClient;
 import API.BaseAPI;
-import API.ServerConnection;
-import Common.*;
-import java.io.*;
-import java.net.Socket;
 
 
 public class TestClient {
