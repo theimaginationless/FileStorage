@@ -32,7 +32,7 @@ public class MessagingTransport {
                     logger.info("Get response with id: " + tempResponse.getRequestId().toString());
                     if(tempResponse.getRequestId().equals(request.getRequestId())) {
                         response = tempResponse;
-                        logger.info("It's us response!");
+                        logger.info("It's our response!");
                     }
                 }
             } while(response == null);
