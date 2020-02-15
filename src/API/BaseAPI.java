@@ -15,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.logging.Logger;
 
 public class BaseAPI {
@@ -101,8 +102,8 @@ public class BaseAPI {
             if(readTotal != len) {
                 throw new FileStorageException(ServiceError.Failed);
             }
-        } catch(Throwable ex) {
-            logger.severe("Operation failed! " + ex.getMessage());
+        } catch(IOException ex) {
+            logger.severe("Operation failed! " + Arrays.toString(ex.getStackTrace()));
             throw new FileStorageException(ServiceError.CONNERROR);
         }
         return ServiceError.OK;
@@ -115,8 +116,8 @@ public class BaseAPI {
             logger.info("Retries: " + retry + "/" + retries);
             try {
                 error = writeData(filePath);
-                if(error != ServiceError.OK) {
-                    throw new FileStorageException(error);
+                if(error == ServiceError.OK) {
+                    break;
                 }
                 Thread.sleep(1000);
             } catch(InterruptedException ex) {
