@@ -1,5 +1,6 @@
 package API;
 
+import API.Codes.FileStorageException;
 import API.Codes.ServiceError;
 import API.Codes.MessagingCode;
 import API.Messaging.MessageExtractors.OffsetMessageExtractor;
@@ -17,25 +18,24 @@ import java.net.Socket;
 import java.util.logging.Logger;
 
 public class BaseAPI {
-    private static Logger logger = Logger.getLogger(BaseAPI.class.getClass().getName());
+    private static Logger logger = Logger.getLogger(BaseAPI.class.getName());
     private ServerConnection conn;
     private Socket socket;
     private OutputStream os;
 
-    public BaseAPI(@NotNull String addr) {
+    public BaseAPI(@NotNull String addr) throws FileStorageException {
         conn = new ServerConnection(addr);
         logger.info("Initialize client-side; Host server: '" + conn.getAddr() + "'");
         initConnection();
     }
 
-    private boolean initConnection() {
+    private void initConnection() throws FileStorageException {
         try {
             socket = conn.Connect().getSocket();
-            return true;
         } catch(IOException ex) {
             logger.severe("Problem with connection. " + ex.getMessage());
+            throw new FileStorageException(ServiceError.CONNERROR);
         }
-        return false;
     }
 
     /**
@@ -52,7 +52,7 @@ public class BaseAPI {
         return offset;
     }
 
-    public ServiceError writeData(@NotNull String filePath) {
+    public ServiceError writeData(@NotNull String filePath) throws FileStorageException {
         try {
             OutputStream os = socket.getOutputStream();
             FileInputStream fis = new FileInputStream(filePath);
@@ -99,30 +99,29 @@ public class BaseAPI {
             fis.close();
             socket.close();
             if(readTotal != len) {
-                return ServiceError.CONNERROR;
+                throw new FileStorageException(ServiceError.Failed);
             }
-            return ServiceError.OK;
         } catch(Throwable ex) {
             logger.severe("Operation failed! " + ex.getMessage());
+            throw new FileStorageException(ServiceError.CONNERROR);
         }
-        return ServiceError.Failed;
+        return ServiceError.OK;
     }
 
-    public ServiceError writeFile(@NotNull String filePath) {
+    public void writeFile(@NotNull String filePath) throws FileStorageException {
         int retries = Const.retriesOperationCount;
-        ServiceError error = ServiceError.Unknown;
+        ServiceError error;
         for(int retry = 0; retry < retries + 1; ++retry) {
             logger.info("Retries: " + retry + "/" + retries);
-            error = writeData(filePath);
-            if(error != ServiceError.CONNERROR) {
-                break;
-            }
             try {
+                error = writeData(filePath);
+                if(error != ServiceError.OK) {
+                    throw new FileStorageException(error);
+                }
                 Thread.sleep(1000);
             } catch(InterruptedException ex) {
-                logger.severe("Operation failed! " + ex.getMessage());
+                logger.severe(ex.getMessage());
             }
         }
-        return error;
     }
 }

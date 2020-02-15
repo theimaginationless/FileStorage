@@ -7,8 +7,8 @@ import java.net.Socket;
 import java.util.logging.Logger;
 
 public class MessagingTransport {
-    private static Logger logger = Logger.getLogger(MessagingTransport.class.getClass().getName());
-    
+    private static Logger logger = Logger.getLogger(MessagingTransport.class.getName());
+
     public static ServiceError sendResponse(Response response, ObjectOutputStream objectOutputStream) {
         try {
             objectOutputStream.writeObject(response);

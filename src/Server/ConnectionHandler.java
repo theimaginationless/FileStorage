@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class ConnectionHandler implements Runnable {
-    private static Logger logger = Logger.getLogger(ConnectionHandler.class.getClass().getName());
+    private static Logger logger = Logger.getLogger(ConnectionHandler.class.getName());
     private ExecutorService mJobExecutorService;
     private volatile boolean isRunning;
     private Thread mThread;

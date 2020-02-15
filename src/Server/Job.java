@@ -11,7 +11,7 @@ import java.net.Socket;
 import java.util.logging.Logger;
 
 public class Job {
-    private static Logger logger = Logger.getLogger(Job.class.getClass().getName());
+    private static Logger logger = Logger.getLogger(Job.class.getName());
     private InputStream inputStream;
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
