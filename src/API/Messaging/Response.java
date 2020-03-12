@@ -8,7 +8,7 @@ public class Response implements Messaging {
     private UUID requestId;
     private MessagingCode messagingCode;
     private String hash;
-    private ResponsePayload data;
+    private MessagingPayload data;
 
     @Override
     public MessagingCode getMessagingCode() {
@@ -30,11 +30,15 @@ public class Response implements Messaging {
         this.requestId = request.getRequestId();
     }
 
-    public void setResponse(ResponsePayload data) {
+    public void setPayload(MessagingPayload data) {
         this.data = data;
     }
 
-    public ResponsePayload getResponse() {
+    public void setMessagingCode(MessagingCode messagingCode) {
+        this.messagingCode = messagingCode;
+    }
+
+    public MessagingPayload getPayload() {
         return this.data;
     }
 }

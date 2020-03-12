@@ -1,8 +1,12 @@
 package Server;
+import API.Codes.FileStorageException;
+import API.Codes.MessagingCode;
+import API.ConnectionBundle;
+import API.Messaging.MessageExtractors.WriteFileRequestMessageExtractor;
 import API.Messaging.MessagingTransport;
 import API.Messaging.Request;
+import API.Messaging.MessagingPayload;
 import API.Messaging.Response;
-import API.Messaging.ResponsePayload;
 import Common.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,22 +16,18 @@ import java.util.logging.Logger;
 
 public class Job {
     private static Logger logger = Logger.getLogger(Job.class.getName());
-    private InputStream inputStream;
-    private ObjectInputStream objectInputStream;
-    private ObjectOutputStream objectOutputStream;
-    private Socket socket;
     private String fileName;
+    private ConnectionBundle connectionBundle;
 
     public Job(Socket socket) {
-        this.socket = socket;
+        connectionBundle = new ConnectionBundle(socket);
         try {
-            objectOutputStream = new ObjectOutputStream(this.socket.getOutputStream());
-            inputStream = this.socket.getInputStream();
-            objectInputStream = new ObjectInputStream(inputStream);
-        } catch(IOException ex) {
-            ex.printStackTrace();
+            connectionBundle.Connect();
+        } catch(FileStorageException ex) {
+            logger.info("[" + Thread.currentThread().getId() + "] Connection error: " + ex.getMessage());
+            return;
         }
-
+        logger.info("[" + Thread.currentThread().getId() + "] Running service...");
     }
 
     private long getOffset(@NotNull String fileName) {
@@ -42,42 +42,47 @@ public class Job {
 
     private Response createOffsetResponse(Request request, long offset) {
         Response response = new Response(request);
-        response.setResponse(new ResponsePayload(offset));
+        response.setPayload(new MessagingPayload(offset));
         return response;
     }
 
-    public long start() throws Exception {
-        logger.info("Running service...");
-        File testDir = new File(Const.storagePath);
-        if(!testDir.exists()) {
-            testDir.mkdir();
-        }
-        byte[] buf = new byte[Const.bufferSize];
-        int read;
-        long totalReads = 0;
-        Request request = MessagingTransport.getRequest(objectInputStream);
+    private void closeConnections() throws FileStorageException {
+        connectionBundle.close();
+        logger.info("[" + Thread.currentThread().getId() + "] Socket: '" + connectionBundle.getAddr() + "' and streams are closed successfully.");
+    }
 
-        switch (request.getMessagingCode()) {
-            case GETOFFSET:
-                fileName = request.getHash();
-                totalReads = getOffset(fileName);
-                Response response = createOffsetResponse(request, totalReads);
-                MessagingTransport.sendResponse(response, objectOutputStream);
-                inputStream.skip(totalReads);
+    public long start() throws Exception {
+        long result = 0;
+        boolean isRunning = true;
+        while(isRunning) {
+            Request request = null;
+            if((request = MessagingTransport.getRequest(connectionBundle)) != null) {
+                switch (request.getMessagingCode()) {
+                    case GETOFFSET:
+                        fileName = request.getHash();
+                        long offset = getOffset(fileName);
+                        Response response = createOffsetResponse(request, offset);
+                        MessagingTransport.sendResponse(response, connectionBundle);
+                        result = offset;
+                        break;
+                    case WRITEFILE_REQUEST:
+                        WriteFileRequestMessageExtractor wfme = (WriteFileRequestMessageExtractor) MessagingCode.valueOf(request.getMessagingCode().name()).getInstance();
+                        fileName = request.getHash();
+                        long offset_req = wfme.getMessage(request.getPayload());
+                        Response writeFileResponse = new Response((request));
+                        writeFileResponse.setMessagingCode(MessagingCode.WRITEFILE_RESPONSE);
+                        writeFileResponse.setPayload(new MessagingPayload(true));
+                        MessagingTransport.sendResponse(writeFileResponse, connectionBundle);
+                        result = Operations.writeFile(fileName, connectionBundle.getInputStream(), offset_req);
+                        break;
+                    default:
+                        logger.info("[" + Thread.currentThread().getId() + "] Received request: '" + request.getMessagingCode().name() + "'; Skip it.");
+                }
+            } else {
+                isRunning = false;
+            }
         }
-        RandomAccessFile raf = new RandomAccessFile(Const.storagePath + fileName, "rw");
-        raf.seek(totalReads);
-        while((read = inputStream.read(buf, 0, buf.length)) != -1) {
-            totalReads += read;
-            raf.write(buf, 0, read);
-            System.out.print("\rReads: " + totalReads);
-        }
-        System.out.println();
-        raf.close();
-        objectOutputStream.close();
-        objectInputStream.close();
-        inputStream.close();
-        socket.close();
-        return totalReads;
+        closeConnections();
+        return result;
     }
 }

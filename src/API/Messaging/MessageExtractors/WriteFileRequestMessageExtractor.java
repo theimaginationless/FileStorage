@@ -2,9 +2,9 @@ package API.Messaging.MessageExtractors;
 
 import API.Messaging.MessagingPayload;
 
-public class OffsetMessageExtractor extends MessageExtractor {
+public class WriteFileRequestMessageExtractor extends MessageExtractor {
     @Override
     public Long getMessage(MessagingPayload responsePayload) {
-        return (long) responsePayload.getPayload();
+        return (Long) responsePayload.getPayload();
     }
 }

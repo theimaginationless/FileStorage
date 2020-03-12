@@ -1,18 +1,20 @@
 package API.Messaging;
 
 import API.Codes.ServiceError;
+import API.ConnectionBundle;
 
 import java.io.*;
-import java.net.Socket;
 import java.util.logging.Logger;
 
 public class MessagingTransport {
     private static Logger logger = Logger.getLogger(MessagingTransport.class.getName());
 
-    public static ServiceError sendResponse(Response response, ObjectOutputStream objectOutputStream) {
+    public static ServiceError sendResponse(Response response, ConnectionBundle targetConnBundle) {
+        ObjectOutputStream objectOutputStream = targetConnBundle.getObjectOutputStream();
         try {
             objectOutputStream.writeObject(response);
             objectOutputStream.flush();
+            logger.info("[" + Thread.currentThread().getId() + "] Sent response with id: " + response.getRequestId().toString() + "; type: " + response.getMessagingCode());
         } catch(IOException ex) {
             ex.printStackTrace();
             return ServiceError.CONNERROR;
@@ -20,19 +22,18 @@ public class MessagingTransport {
         return ServiceError.OK;
     }
 
-    public static Response getResponse(Request request, Socket source) {
+    public static Response getResponse(Request request, ConnectionBundle sourceConnBundle) {
         Response response = null;
+        ObjectInputStream objectInputStream = sourceConnBundle.getObjectInputStream();
         try {
-            InputStream inputStream = source.getInputStream();
-            ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
             do {
                 Object obj = objectInputStream.readObject();
                 if(obj instanceof Response) {
                     Response tempResponse = (Response) obj;
-                    logger.info("Get response with id: " + tempResponse.getRequestId().toString());
+                    logger.info("[" + Thread.currentThread().getId() + "] Get response with id: " + tempResponse.getRequestId().toString() + "; type: " + tempResponse.getMessagingCode());
                     if(tempResponse.getRequestId().equals(request.getRequestId())) {
                         response = tempResponse;
-                        logger.info("It's our response!");
+                        logger.info("[" + Thread.currentThread().getId() + "] It's our response!");
                     }
                 }
             } while(response == null);
@@ -42,28 +43,28 @@ public class MessagingTransport {
         return response;
     }
 
-    public static void sendRequest(Request request, Socket target) {
+    public static void sendRequest(Request request, ConnectionBundle targetConnBundle) {
+        ObjectOutputStream objectOutputStream = targetConnBundle.getObjectOutputStream();
         try {
-            OutputStream outputStream = target.getOutputStream();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
-
             objectOutputStream.writeObject(request);
             objectOutputStream.flush();
-
-            logger.info("Sent request with id: " + request.getRequestId().toString());
+            logger.info("[" + Thread.currentThread().getId() + "] Sent request with id: " + request.getRequestId().toString() + "; type: " + request.getMessagingCode());
         } catch(IOException ex) {
             logger.severe(ex.getMessage());
         }
     }
 
-    public static Request getRequest(ObjectInputStream objectInputStream) {
+    public static Request getRequest(ConnectionBundle sourceConnBundle) {
         Request request = null;
+        ObjectInputStream objectInputStream = sourceConnBundle.getObjectInputStream();
         try {
             Object obj = objectInputStream.readObject();
-            if(obj instanceof Request) {
+            if (obj instanceof Request) {
                 request = (Request) obj;
-                logger.info("Get request with id: " + request.getRequestId().toString());
+                logger.info("[" + Thread.currentThread().getId() + "] Get request with id: " + request.getRequestId().toString() + "; type: " + request.getMessagingCode());
             }
+        } catch(EOFException ex) {
+            logger.info("[" + Thread.currentThread().getId() + "] End of communicating with client.");
         } catch(ClassNotFoundException | IOException ex) {
             ex.printStackTrace();
         }

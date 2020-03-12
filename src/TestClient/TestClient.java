@@ -10,10 +10,8 @@ public class TestClient {
         try {
             BaseAPI baseApi = new BaseAPI(args[0]);
             baseApi.writeFile(args[1]);
-        } catch(FileStorageException ex) {
-            System.err.println("Error: " + ex.getErrorCode());
         } catch(Throwable ex) {
-            System.err.println("Error: " + Arrays.toString(ex.getStackTrace()));
+            ex.printStackTrace();
         }
     }
 }

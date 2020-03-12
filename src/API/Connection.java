@@ -6,15 +6,15 @@ import org.jetbrains.annotations.NotNull;
 import java.io.*;
 import java.net.Socket;
 
-public class ServerConnection {
+public class Connection {
     private String addr;
     private Socket socket;
 
-    public ServerConnection(@NotNull String addr) {
+    public Connection(@NotNull String addr) {
         this.addr = addr;
     }
 
-    public ServerConnection Connect() throws IOException {
+    public Connection Connect() throws IOException {
         this.socket = new Socket(this.addr, Const.port);
         return this;
     }

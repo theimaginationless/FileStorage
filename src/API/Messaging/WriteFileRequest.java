@@ -5,11 +5,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
-public class Request implements Messaging {
+public class WriteFileRequest implements Messaging {
     private UUID requestId;
     private MessagingCode messagingCode;
     private String hash;
-    private MessagingPayload data;
+    private MessagingPayload offset;
+    private MessagingPayload size;
 
     @Override
     public MessagingCode getMessagingCode() {
@@ -25,17 +26,22 @@ public class Request implements Messaging {
         return requestId;
     }
 
-    public Request(@NotNull String hash, @NotNull MessagingCode messagingCode) {
+    public WriteFileRequest(@NotNull String hash, @NotNull MessagingCode messagingCode) {
         this.messagingCode = messagingCode;
         this.hash = hash;
         this.requestId = UUID.randomUUID();
     }
 
-    public void setPayload(MessagingPayload data) {
-        this.data = data;
+    public void setPayload(MessagingPayload size, MessagingPayload offset) {
+        this.size = size;
+        this.offset = offset;
     }
 
-    public MessagingPayload getPayload() {
-        return this.data;
+    public MessagingPayload getSizePayload() {
+        return this.size;
+    }
+
+    public MessagingPayload getOffsetPayload() {
+        return this.offset;
     }
 }

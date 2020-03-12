@@ -11,7 +11,7 @@ class Server  {
         try {
             LogManager.getLogManager().readConfiguration(Server.class.getResourceAsStream(Const.loggerConfiguration));
         } catch(IOException | NullPointerException ex) {
-            System.err.println("Cannot read configuration file '" + Const.loggerConfiguration + "'");
+            System.err.println("[" + Thread.currentThread().getId() + "] Cannot read configuration file '" + Const.loggerConfiguration + "'");
             System.exit(1);
         }
         ConnectionHandler cHandler = new ConnectionHandler();

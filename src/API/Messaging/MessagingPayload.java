@@ -2,10 +2,10 @@ package API.Messaging;
 
 import java.io.Serializable;
 
-public class ResponsePayload implements Serializable {
+public class MessagingPayload implements Serializable {
     private Object payload;
 
-    public ResponsePayload(Object payload) {
+    public MessagingPayload(Object payload) {
         this.payload = payload;
     }
 

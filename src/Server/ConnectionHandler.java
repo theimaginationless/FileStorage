@@ -41,7 +41,7 @@ public class ConnectionHandler implements Runnable {
     }
 
     public void stop() throws IOException {
-        logger.info("Stopping service...");
+        logger.info("[" + Thread.currentThread().getId() + "] Stopping service...");
         isRunning = false;
         mServerSocket.close();
         mJobExecutorService.shutdown();
@@ -58,10 +58,10 @@ public class ConnectionHandler implements Runnable {
     @Override
     public void run() {
         isRunning = true;
-        logger.info("Running service...");
+        logger.info("[" + Thread.currentThread().getId() + "] Running service...");
         while(isRunning) {
             try {
-                logger.info("Service started! Waiting incoming connections.");
+                logger.info("[" + Thread.currentThread().getId() + "] Service started! Waiting incoming connections.");
                 Socket incomingConnection = mServerSocket.accept();
                 JobHandler jobHandler = new JobHandler(incomingConnection);
                 Future<Long> task = mJobExecutorService.submit(jobHandler);
@@ -69,9 +69,9 @@ public class ConnectionHandler implements Runnable {
                 taskListJanitor();
 
             } catch(IOException e) {
-                logger.severe("Oops? We have a some IO problem? " + e.getMessage());
+                logger.severe("[" + Thread.currentThread().getId() + "] Oops? We have a some IO problem? " + e.getMessage());
             }
         }
-        logger.info("Shutting down service...");
+        logger.info("[" + Thread.currentThread().getId() + "] Shutting down service...");
     }
 }
