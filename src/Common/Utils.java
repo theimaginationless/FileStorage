@@ -22,7 +22,7 @@ public class Utils {
 
         InputStream is;
         try {
-            is = new FileInputStream(filePath);
+            is = new FileInputStreamEx(filePath);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return null;

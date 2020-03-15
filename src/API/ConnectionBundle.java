@@ -3,6 +3,8 @@ package API;
 import API.Codes.FileStorageException;
 import API.Codes.ServiceError;
 import Common.Const;
+import Common.InputStreamWrapper;
+import Common.OutputStreamWrapper;
 
 import java.io.*;
 import java.net.Socket;
@@ -12,8 +14,10 @@ public class ConnectionBundle {
     private static Logger logger = Logger.getLogger(ConnectionBundle.class.getName());
     private String addr;
     private Socket socket;
-    private InputStream inputStream;
-    private OutputStream outputStream;
+    private InputStreamWrapper inputStreamWrapper;
+    private OutputStreamWrapper outputStreamWrapper;
+    private InputStream pureInputStream;
+    private OutputStream pureOutputStream;
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
 
@@ -35,10 +39,12 @@ public class ConnectionBundle {
             if(socket == null) {
                 socket = new Socket(addr, Const.port);
             }
-            outputStream = socket.getOutputStream();
-            objectOutputStream = new ObjectOutputStream(outputStream);
-            inputStream = socket.getInputStream();
-            objectInputStream = new ObjectInputStream(inputStream);
+            outputStreamWrapper = new OutputStreamWrapper(socket.getOutputStream());
+            pureOutputStream = socket.getOutputStream();
+            objectOutputStream = new ObjectOutputStream(pureOutputStream);
+            pureInputStream = socket.getInputStream();
+            inputStreamWrapper = new InputStreamWrapper(pureInputStream);
+            objectInputStream = new ObjectInputStream(pureInputStream);
 
             result = this;
         } catch(IOException ex) {
@@ -48,12 +54,20 @@ public class ConnectionBundle {
         return result;
     }
 
-    public InputStream getInputStream() {
-        return inputStream;
+    public InputStreamWrapper getInputStreamWrapper() {
+        return inputStreamWrapper;
     }
 
-    public OutputStream getOutputStream() {
-        return outputStream;
+    public OutputStreamWrapper getOutputStreamWrapper() {
+        return outputStreamWrapper;
+    }
+
+    public InputStream getPureInputStream() {
+        return pureInputStream;
+    }
+
+    public OutputStream getPureOutputStream() {
+        return pureOutputStream;
     }
 
     public ObjectInputStream getObjectInputStream() {
@@ -80,8 +94,8 @@ public class ConnectionBundle {
         try {
             objectInputStream.close();
             objectOutputStream.close();
-            inputStream.close();
-            outputStream.close();
+            inputStreamWrapper.close();
+            outputStreamWrapper.close();
             socket.close();
             logger.info("[" + Thread.currentThread().getId() + "] Socket: '" + getAddr() + "' and streams are closed successfully.");
         } catch(IOException ex) {

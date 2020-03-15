@@ -13,11 +13,12 @@ public class WriteFileResponse implements Response {
     private DataInfo info;
     private boolean compressed;
 
-    public WriteFileResponse(Request request, DataInfo info, MessageCode messageCode, ServiceError code) {
+    public WriteFileResponse(WriteFileRequest request, DataInfo info, MessageCode messageCode, ServiceError code) {
         this.responseId = request.getRequestId();
         this.info = info;
         this.messageCode = messageCode;
         this.code = code;
+        this.compressed = request.isCompressed();
     }
 
     public WriteFileResponse(JSONObject jsonObject) throws ClassFormatError {

@@ -9,7 +9,7 @@ public class TestClient {
     public static void main(String args[]) {
         try {
             BaseAPI baseApi = new BaseAPI(args[0]);
-            baseApi.writeFile(args[1]);
+            baseApi.writeFile(args[1], false);
         } catch(Throwable ex) {
             ex.printStackTrace();
         }

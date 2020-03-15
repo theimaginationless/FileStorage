@@ -1,10 +1,10 @@
 package Server;
 import Common.Const;
+import Common.InputStreamWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.logging.Logger;
 
@@ -29,19 +29,21 @@ public class Operations {
         return length;
     }
 
-    public static Long writeFile(String fileName, InputStream inputStream, long offset) {
+    public static Long writeFile(String fileName, InputStreamWrapper inputStreamWrapper, long offset, boolean isCompressed) {
         initStorage();
         logger.info("[" + Thread.currentThread().getId() + "] Start writing file: '" + fileName + "'; offset: " + offset);
+        logger.info("Channel compression is " + (isCompressed ? "enabled" : "disabled"));
         byte[] buf = new byte[Const.bufferSize];
         int read;
         long totalReads = offset;
         try {
             RandomAccessFile raf = new RandomAccessFile(Const.storagePath + fileName, "rw");
             raf.seek(totalReads);
-            while ((read = inputStream.read(buf, 0, buf.length)) != -1) {
+            while ((read = inputStreamWrapper.read(buf, 0, buf.length, isCompressed)) != -1) {
                 totalReads += read;
                 raf.write(buf, 0, read);
             }
+            System.out.println("Written total: " + totalReads + " bytes.");
             raf.close();
         } catch(IOException ex) {
             ex.printStackTrace();

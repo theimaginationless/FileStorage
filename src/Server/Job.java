@@ -66,10 +66,11 @@ public class Job {
                         fileName = writeFileRequest.getInfo().getHash();
                         long offset_req = writeFileRequest.getOffset();
                         long writeFileSize = getFileSize(fileName);
+                        boolean isCompressed = writeFileRequest.isCompressed();
                         DataInfo writeFileinfo = new DataInfo(writeFileRequest.getInfo().getHash(), writeFileSize);
                         WriteFileResponse writeFileResponse = new WriteFileResponse(writeFileRequest, writeFileinfo, MessageCode.WRITEFILE_RESPONSE, ServiceError.OK);
                         MessageTransport.sendResponse(writeFileResponse, connectionBundle);
-                        result = Operations.writeFile(fileName, connectionBundle.getInputStream(), offset_req);
+                        result = Operations.writeFile(fileName, connectionBundle.getInputStreamWrapper(), offset_req, isCompressed);
                         break;
                     default:
                         logger.info("[" + Thread.currentThread().getId() + "] Received request: '" + basicRequest.getMessageCode().name() + "'; Skip it.");

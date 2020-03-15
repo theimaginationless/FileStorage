@@ -5,9 +5,11 @@ import API.Codes.ServiceError;
 import API.Codes.MessageCode;
 import API.Messaging.*;
 import Common.Const;
+import Common.FileInputStreamEx;
+import Common.OutputStreamWrapper;
 import Common.Utils;
 import org.jetbrains.annotations.NotNull;
-import java.io.FileInputStream;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
@@ -29,10 +31,10 @@ public class BaseAPI {
         connectionBundle.Connect();
     }
 
-    public ServiceError writeData(@NotNull String filePath) throws FileStorageException {
+    public ServiceError writeData(@NotNull String filePath, boolean isCompressed) throws FileStorageException {
         try {
-            OutputStream os = connectionBundle.getOutputStream();
-            FileInputStream fis = new FileInputStream(filePath);
+            OutputStreamWrapper os = connectionBundle.getOutputStreamWrapper();
+            FileInputStreamEx fis = new FileInputStreamEx(filePath);
             byte[] buf = new byte[Const.bufferSize];
             int read = 0;
             long len = fis.getChannel().size();
@@ -45,6 +47,7 @@ public class BaseAPI {
 
             WriteFileRequest writeFileRequest = new WriteFileRequest(info, MessageCode.WRITEFILE_REQUEST);
             writeFileRequest.setOffset(remoteSize);
+            writeFileRequest.setCompressed(isCompressed);
             MessageTransport.sendRequest(writeFileRequest, connectionBundle);
             WriteFileResponse writeFileResponse = new WriteFileResponse(MessageTransport.getResponse(writeFileRequest, connectionBundle));
             if(writeFileResponse.getCode() != ServiceError.OK) {
@@ -57,7 +60,7 @@ public class BaseAPI {
                 return ServiceError.EXIST;
             }
             System.out.println("Hash: " + hash);
-
+            logger.info("Channel compression is " + (isCompressed ? "enabled" : "disabled"));
             long readTotal = remoteSize;
             long readTotalPerSec = 0;
             float avgSpeed = 0;
@@ -65,14 +68,14 @@ public class BaseAPI {
             long endTime = 0;
             long avgEta = 0;
             fis.skip(readTotal);
-            while ((read = fis.read(buf, 0, buf.length)) != -1) {
+            while ((read = fis.read(buf, 0, buf.length, false)) != -1) {
                 if(endTime == 0) {
                     startTime = System.currentTimeMillis();
                 }
 
                 readTotal += read;
                 readTotalPerSec += read;
-                os.write(buf, 0, read);
+                os.write(buf, 0, read, isCompressed);
                 endTime = System.currentTimeMillis();
                 long delta = endTime - startTime;
                 if(delta >= 1000) {
@@ -85,26 +88,27 @@ public class BaseAPI {
                 System.out.printf("\r%d%% written, %.2f MB/s, ETA: %d s.", perc, avgSpeed, avgEta);
             }
 
-            System.out.println();
+            System.out.println("Written total: " + readTotal + " bytes.");
             fis.close();
             connectionBundle.close();
             if(readTotal != len) {
                 throw new FileStorageException(ServiceError.Failed);
             }
         } catch(IOException ex) {
-            System.err.println("Operation failed! " + Arrays.toString(ex.getStackTrace()));
+            System.err.println("Operation failed! ");
+            ex.printStackTrace();
             throw new FileStorageException(ServiceError.CONNERROR);
         }
         return ServiceError.OK;
     }
 
-    public void writeFile(@NotNull String filePath) throws FileStorageException {
+    public void writeFile(@NotNull String filePath, boolean isCompressed) throws FileStorageException {
         int retries = Const.retriesOperationCount;
         ServiceError error;
         for(int retry = 0; retry < retries + 1; ++retry) {
             System.out.println("Retries: " + retry + "/" + retries);
             try {
-                error = writeData(filePath);
+                error = writeData(filePath, isCompressed);
                 if(error != ServiceError.CONNERROR) {
                     break;
                 }
