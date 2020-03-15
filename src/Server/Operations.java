@@ -20,7 +20,6 @@ public class Operations {
     }
 
     private static long getOffset(@NotNull String fileName) {
-        initStorage();
         long length = 0;
         File checkedFile = new File(Const.storagePath + fileName);
         if(!checkedFile.exists()) {

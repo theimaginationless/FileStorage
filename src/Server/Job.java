@@ -1,14 +1,12 @@
 package Server;
 import API.Codes.FileStorageException;
-import API.Codes.MessagingCode;
+import API.Codes.MessageCode;
+import API.Codes.ServiceError;
 import API.ConnectionBundle;
-import API.Messaging.MessageExtractors.WriteFileRequestMessageExtractor;
-import API.Messaging.MessagingTransport;
-import API.Messaging.Request;
-import API.Messaging.MessagingPayload;
-import API.Messaging.Response;
+import API.Messaging.*;
 import Common.*;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 
 import java.io.*;
 import java.net.Socket;
@@ -30,7 +28,7 @@ public class Job {
         logger.info("[" + Thread.currentThread().getId() + "] Running service...");
     }
 
-    private long getOffset(@NotNull String fileName) {
+    private long getFileSize(@NotNull String fileName) {
         long length = 0;
         File checkedFile = new File(Const.storagePath + fileName);
         if(!checkedFile.exists()) {
@@ -38,12 +36,6 @@ public class Job {
         }
         length = checkedFile.length();
         return length;
-    }
-
-    private Response createOffsetResponse(Request request, long offset) {
-        Response response = new Response(request);
-        response.setPayload(new MessagingPayload(offset));
-        return response;
     }
 
     private void closeConnections() throws FileStorageException {
@@ -55,28 +47,32 @@ public class Job {
         long result = 0;
         boolean isRunning = true;
         while(isRunning) {
-            Request request = null;
-            if((request = MessagingTransport.getRequest(connectionBundle)) != null) {
-                switch (request.getMessagingCode()) {
-                    case GETOFFSET:
-                        fileName = request.getHash();
-                        long offset = getOffset(fileName);
-                        Response response = createOffsetResponse(request, offset);
-                        MessagingTransport.sendResponse(response, connectionBundle);
-                        result = offset;
+            BasicRequest basicRequest = null;
+            JSONObject jsonObjectRequest;
+            if((jsonObjectRequest = MessageTransport.getRequest(connectionBundle)) != null) {
+                MessageCode requestCode = MessageCode.valueOf(jsonObjectRequest.getString("messageCode"));
+                switch (requestCode) {
+                    case INFO_REQUEST:
+                        FileInfoRequest infoRequest = new FileInfoRequest(jsonObjectRequest);
+                        fileName = infoRequest.getInfo().getHash();
+                        long size = getFileSize(fileName);
+                        DataInfo info = new DataInfo(fileName, size);
+                        FileInfoResponse response = new FileInfoResponse(infoRequest, info, MessageCode.INFO_RESPONSE, ServiceError.OK);
+                        MessageTransport.sendResponse(response, connectionBundle);
+                        result = size;
                         break;
                     case WRITEFILE_REQUEST:
-                        WriteFileRequestMessageExtractor wfme = (WriteFileRequestMessageExtractor) MessagingCode.valueOf(request.getMessagingCode().name()).getInstance();
-                        fileName = request.getHash();
-                        long offset_req = wfme.getMessage(request.getPayload());
-                        Response writeFileResponse = new Response((request));
-                        writeFileResponse.setMessagingCode(MessagingCode.WRITEFILE_RESPONSE);
-                        writeFileResponse.setPayload(new MessagingPayload(true));
-                        MessagingTransport.sendResponse(writeFileResponse, connectionBundle);
+                        WriteFileRequest writeFileRequest = new WriteFileRequest(jsonObjectRequest);
+                        fileName = writeFileRequest.getInfo().getHash();
+                        long offset_req = writeFileRequest.getOffset();
+                        long writeFileSize = getFileSize(fileName);
+                        DataInfo writeFileinfo = new DataInfo(writeFileRequest.getInfo().getHash(), writeFileSize);
+                        WriteFileResponse writeFileResponse = new WriteFileResponse(writeFileRequest, writeFileinfo, MessageCode.WRITEFILE_RESPONSE, ServiceError.OK);
+                        MessageTransport.sendResponse(writeFileResponse, connectionBundle);
                         result = Operations.writeFile(fileName, connectionBundle.getInputStream(), offset_req);
                         break;
                     default:
-                        logger.info("[" + Thread.currentThread().getId() + "] Received request: '" + request.getMessagingCode().name() + "'; Skip it.");
+                        logger.info("[" + Thread.currentThread().getId() + "] Received request: '" + basicRequest.getMessageCode().name() + "'; Skip it.");
                 }
             } else {
                 isRunning = false;

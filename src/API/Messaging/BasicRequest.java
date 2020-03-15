@@ -6,12 +6,10 @@ import org.json.JSONObject;
 
 import java.util.UUID;
 
-public class WriteFileRequest implements Request {
+public class BasicRequest implements Request {
     private UUID requestId;
     private MessageCode messageCode;
-    private long offset;
     private DataInfo info;
-    private boolean compressed;
 
     @Override
     public MessageCode getMessageCode() {
@@ -21,12 +19,9 @@ public class WriteFileRequest implements Request {
     @Override
     public JSONObject getJSONObject() {
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("classType", this.getClass().getName());
         jsonObject.put("messageCode", messageCode.name());
         jsonObject.put("requestId", requestId.toString());
-        jsonObject.put("compressed", compressed);
-        jsonObject.put("offset", offset);
-        jsonObject.put(DataInfo.class.getName(), info.getJSONObject());
+        jsonObject.put(DataInfo.class.getName(), info);
         return jsonObject;
     }
 
@@ -34,46 +29,24 @@ public class WriteFileRequest implements Request {
         return requestId;
     }
 
-    public WriteFileRequest(@NotNull DataInfo info, @NotNull MessageCode messageCode) {
-        this.info = info;
+    public BasicRequest(@NotNull DataInfo info, @NotNull MessageCode messageCode) {
         this.messageCode = messageCode;
+        this.info = info;
         this.requestId = UUID.randomUUID();
     }
 
-    public WriteFileRequest(JSONObject jsonObject) throws ClassFormatError{
+    public BasicRequest(JSONObject jsonObject) throws ClassFormatError {
         String classType = jsonObject.getString("classType");
         if(!classType.equals(this.getClass().getName())) {
             throw new ClassFormatError();
         }
+
         messageCode = MessageCode.valueOf(jsonObject.getString("messageCode"));
         requestId = UUID.fromString(jsonObject.getString("requestId"));
-        offset = jsonObject.getLong("offset");
-        JSONObject jsonObjectDataInfo = jsonObject.getJSONObject(DataInfo.class.getName());
-        info = new DataInfo(jsonObjectDataInfo);
-    }
-
-    public void setData(long size, long offset) {
-        this.info.setSize(size);
-        this.offset = offset;
+        info = new DataInfo(jsonObject.getJSONObject(DataInfo.class.getName()));
     }
 
     public DataInfo getInfo() {
         return info;
-    }
-
-    public boolean isCompressed() {
-        return compressed;
-    }
-
-    public void setCompressed(boolean compressed) {
-        this.compressed = compressed;
-    }
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public void setOffset(long offset) {
-        this.offset = offset;
     }
 }

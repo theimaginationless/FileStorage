@@ -2,13 +2,8 @@ package API;
 
 import API.Codes.FileStorageException;
 import API.Codes.ServiceError;
-import API.Codes.MessagingCode;
-import API.Messaging.MessageExtractors.OffsetMessageExtractor;
-import API.Messaging.MessageExtractors.WriteFileResponseMessageExtractor;
-import API.Messaging.MessagingTransport;
-import API.Messaging.Request;
-import API.Messaging.Response;
-import API.Messaging.MessagingPayload;
+import API.Codes.MessageCode;
+import API.Messaging.*;
 import Common.Const;
 import Common.Utils;
 import org.jetbrains.annotations.NotNull;
@@ -34,47 +29,36 @@ public class BaseAPI {
         connectionBundle.Connect();
     }
 
-    /**
-     * Returns length of written file part on server
-     */
-    private long getOffsetData(@NotNull String hash) {
-        Request request = new Request(hash, MessagingCode.GETOFFSET);
-        long offset = 0;
-        MessagingTransport.sendRequest(request, connectionBundle);
-        Response response = MessagingTransport.getResponse(request, connectionBundle);
-        MessagingPayload rp = response.getPayload();
-        OffsetMessageExtractor ome = (OffsetMessageExtractor) MessagingCode.valueOf(response.getMessagingCode().name()).getInstance();
-        offset = ome.getMessage(rp);
-        return offset;
-    }
-
     public ServiceError writeData(@NotNull String filePath) throws FileStorageException {
         try {
             OutputStream os = connectionBundle.getOutputStream();
             FileInputStream fis = new FileInputStream(filePath);
             byte[] buf = new byte[Const.bufferSize];
             int read = 0;
-            String hash = Utils.getSHA256(filePath);
-            long offset = getOffsetData(hash);
             long len = fis.getChannel().size();
-            if(len == offset) {
+            String hash = Utils.getSHA256(filePath);
+            DataInfo info = new DataInfo(hash, len);
+            FileInfoRequest fileInfoRequest = new FileInfoRequest(info, MessageCode.INFO_REQUEST);
+            MessageTransport.sendRequest(fileInfoRequest, connectionBundle);
+            FileInfoResponse fileInfoResponse = new FileInfoResponse(MessageTransport.getResponse(fileInfoRequest, connectionBundle));
+            long remoteSize = fileInfoResponse.getInfo().getSize();
+
+            WriteFileRequest writeFileRequest = new WriteFileRequest(info, MessageCode.WRITEFILE_REQUEST);
+            writeFileRequest.setOffset(remoteSize);
+            MessageTransport.sendRequest(writeFileRequest, connectionBundle);
+            WriteFileResponse writeFileResponse = new WriteFileResponse(MessageTransport.getResponse(writeFileRequest, connectionBundle));
+            if(writeFileResponse.getCode() != ServiceError.OK) {
+                System.err.println("Something wrong! Code: " + writeFileResponse.getCode());
+                throw new FileStorageException(ServiceError.Critical);
+            }
+
+            if(len <= remoteSize) {
                 System.out.println("File already exists!");
                 return ServiceError.EXIST;
             }
             System.out.println("Hash: " + hash);
 
-            Request writeFileRequest = new Request(hash, MessagingCode.WRITEFILE_REQUEST);
-            writeFileRequest.setPayload(new MessagingPayload(offset));
-            MessagingTransport.sendRequest(writeFileRequest, connectionBundle);
-            Response writeFileResponse = MessagingTransport.getResponse(writeFileRequest, connectionBundle);
-            WriteFileResponseMessageExtractor wfme = (WriteFileResponseMessageExtractor) MessagingCode.valueOf(writeFileResponse.getMessagingCode().name()).getInstance();
-            boolean ready = wfme.getMessage(writeFileResponse.getPayload());
-            if(!ready) {
-                System.err.println("Something wrong!");
-                throw new FileStorageException(ServiceError.Critical);
-            }
-
-            long readTotal = offset;
+            long readTotal = remoteSize;
             long readTotalPerSec = 0;
             float avgSpeed = 0;
             long startTime = 0;
@@ -102,8 +86,6 @@ public class BaseAPI {
             }
 
             System.out.println();
-//            os.flush();
-//            os.close();
             fis.close();
             connectionBundle.close();
             if(readTotal != len) {
