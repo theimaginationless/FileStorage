@@ -2,56 +2,57 @@ package Common;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.logging.Logger;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
-public class OutputStreamWrapper {
+public class BufferedOutputStreamWrapper {
     private static Logger logger = Logger.getLogger(OutputStreamWrapper.class.getName());
-    private OutputStream os;
+    private BufferedOutputStream bos;
     private boolean compressed;
     private Deflater deflater;
     private DeflaterOutputStream deflaterOutputStream;
 
-    public OutputStreamWrapper(OutputStream os, boolean compressed) {
-        this.os = os;
+    public BufferedOutputStreamWrapper(BufferedOutputStream bos, boolean compressed) {
+        this.bos = bos;
         this.compressed = compressed;
         if(this.compressed) {
-            initInflaterOutputStream();
+            initInflaterBufferedOutputStream();
         }
     }
 
-    private void initInflaterOutputStream() {
+    private void initInflaterBufferedOutputStream() {
         deflater = new Deflater(Deflater.BEST_COMPRESSION);
-        deflaterOutputStream = new DeflaterOutputStream(os, deflater, Const.bufferSize);
+        deflaterOutputStream = new DeflaterOutputStream(bos, deflater, Const.bufferSize);
     }
 
-    public void write(@NotNull byte[] b, int off, int len) throws IOException {
+    public void write(@NotNull byte[] b) throws IOException {
         if(compressed) {
-            deflaterOutputStream.write(b, off, len);
+            deflaterOutputStream.write(b);
         } else {
-            os.write(b, off, len);
+            bos.write(b);
         }
     }
 
-    private void closeDeflaterOutputStream() throws IOException {
+    private void closeDeflaterBufferedOutputStream() throws IOException {
         deflaterOutputStream.close();
     }
 
     public void close() throws IOException {
         if(isCompressed()) {
-            this.closeDeflaterOutputStream();
+            this.closeDeflaterBufferedOutputStream();
         }
-        os.close();
+        bos.close();
     }
 
     public void flush() throws IOException {
         if(isCompressed()) {
             deflaterOutputStream.flush();
         }
-        os.flush();
+        bos.flush();
     }
 
     public boolean isCompressed() {
@@ -60,7 +61,7 @@ public class OutputStreamWrapper {
 
     public void setCompressed(boolean compressed) {
         if(compressed && !this.compressed) {
-            initInflaterOutputStream();
+            initInflaterBufferedOutputStream();
         } else if(!compressed && this.compressed) {
             try {
                 this.close();

@@ -48,6 +48,7 @@ public class WriteFileRequest implements Request {
         messageCode = MessageCode.valueOf(jsonObject.getString("messageCode"));
         requestId = UUID.fromString(jsonObject.getString("requestId"));
         offset = jsonObject.getLong("offset");
+        compressed = jsonObject.getBoolean("compressed");
         JSONObject jsonObjectDataInfo = jsonObject.getJSONObject(DataInfo.class.getName());
         info = new DataInfo(jsonObjectDataInfo);
     }

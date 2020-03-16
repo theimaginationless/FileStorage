@@ -2,45 +2,46 @@ package Common;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.logging.Logger;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
-public class InputStreamWrapper {
+public class BufferedInputStreamWrapper {
     private static Logger logger = Logger.getLogger(InputStreamWrapper.class.getName());
-    private InputStream is;
+    private BufferedInputStream bis;
     private boolean compressed;
     private InflaterInputStream inflaterInputStream;
     private Inflater inflater;
 
-    public InputStreamWrapper(InputStream is, boolean compressed) {
-        this.is = is;
+    public BufferedInputStreamWrapper(BufferedInputStream bis, boolean compressed) {
+        this.bis = bis;
         this.compressed = compressed;
         if(isCompressed()) {
-            initInflaterInputStream();
+            initInflaterBufferedInputStream();
         }
         logger.info("[" + Thread.currentThread().getId() + "] Channel compression is " + (isCompressed() ? "enabled" : "disabled"));
     }
 
-    private void initInflaterInputStream() {
+    private void initInflaterBufferedInputStream() {
         inflater = new Inflater();
-        inflaterInputStream = new InflaterInputStream(is, inflater, Const.bufferSize);
+        inflaterInputStream = new InflaterInputStream(bis, inflater, Const.bufferSize);
     }
 
-    public int read(@NotNull byte[] b, int off, int len) throws IOException {
+    public int read(@NotNull byte[] b) throws IOException {
         if(isCompressed()) {
-            return inflaterInputStream.read(b, off, len);
+            return inflaterInputStream.read(b);
         }
-        return is.read(b, off, len);
+        return bis.read(b);
     }
 
     public int read(@NotNull byte[] b, boolean compressed) throws IOException {
         if(compressed) {
             return inflaterInputStream.read(b);
         }
-        return is.read(b);
+        return bis.read(b);
     }
 
     public boolean isCompressed() {
@@ -49,10 +50,10 @@ public class InputStreamWrapper {
 
     public void setCompressed(boolean compressed) {
         if(compressed && !this.compressed) {
-            initInflaterInputStream();
+            initInflaterBufferedInputStream();
         } else if(!compressed && this.compressed) {
             try {
-                this.closeInflaterInputStream();
+                this.closeInflaterBufferedInputStream();
             } catch(IOException ex) {
                 ex.printStackTrace();
             }
@@ -63,14 +64,14 @@ public class InputStreamWrapper {
         this.compressed = compressed;
     }
 
-    private void closeInflaterInputStream() throws IOException {
+    private void closeInflaterBufferedInputStream() throws IOException {
         inflaterInputStream.close();
     }
 
     public void close() throws IOException {
         if(isCompressed()) {
-            closeInflaterInputStream();
+            closeInflaterBufferedInputStream();
         }
-        is.close();
+        bis.close();
     }
 }

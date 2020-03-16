@@ -2,12 +2,11 @@ package API;
 
 import API.Codes.FileStorageException;
 import API.Codes.ServiceError;
-import Common.Const;
-import Common.InputStreamWrapper;
-import Common.OutputStreamWrapper;
+import Common.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.Buffer;
 import java.util.logging.Logger;
 
 public class ConnectionBundle {
@@ -20,6 +19,9 @@ public class ConnectionBundle {
     private OutputStream pureOutputStream;
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
+    private BufferedOutputStreamWrapper bufferedOutputStreamWrapper;
+    private BufferedInputStreamWrapper bufferedInputStreamWrapper;
+    private boolean compressed;
 
     public ConnectionBundle(String addr) {
         this.addr = addr;
@@ -39,12 +41,14 @@ public class ConnectionBundle {
             if(socket == null) {
                 socket = new Socket(addr, Const.port);
             }
-            outputStreamWrapper = new OutputStreamWrapper(socket.getOutputStream());
             pureOutputStream = socket.getOutputStream();
+            outputStreamWrapper = new OutputStreamWrapper(pureOutputStream, compressed);
             objectOutputStream = new ObjectOutputStream(pureOutputStream);
+            bufferedOutputStreamWrapper = new BufferedOutputStreamWrapper(new BufferedOutputStream(pureOutputStream, Const.bufferSize), compressed);
             pureInputStream = socket.getInputStream();
-            inputStreamWrapper = new InputStreamWrapper(pureInputStream);
+            inputStreamWrapper = new InputStreamWrapper(pureInputStream, compressed);
             objectInputStream = new ObjectInputStream(pureInputStream);
+            bufferedInputStreamWrapper = new BufferedInputStreamWrapper(new BufferedInputStream(pureInputStream, Const.bufferSize), compressed);
 
             result = this;
         } catch(IOException ex) {
@@ -52,6 +56,14 @@ public class ConnectionBundle {
             throw new FileStorageException(ServiceError.CONNERROR);
         }
         return result;
+    }
+
+    public BufferedOutputStreamWrapper getBufferedOutputStreamWrapper() {
+        return bufferedOutputStreamWrapper;
+    }
+
+    public BufferedInputStreamWrapper getBufferedInputStreamWrapper() {
+        return bufferedInputStreamWrapper;
     }
 
     public InputStreamWrapper getInputStreamWrapper() {
@@ -92,15 +104,23 @@ public class ConnectionBundle {
 
     public void close() throws FileStorageException {
         try {
-            objectInputStream.close();
-            objectOutputStream.close();
-            inputStreamWrapper.close();
-            outputStreamWrapper.close();
+            //outputStreamWrapper.flush();
+            //objectOutputStream.flush();
+            //objectInputStream.close();
+            //inputStreamWrapper.close();
             socket.close();
             logger.info("[" + Thread.currentThread().getId() + "] Socket: '" + getAddr() + "' and streams are closed successfully.");
         } catch(IOException ex) {
             logger.severe("[" + Thread.currentThread().getId() + "] Close connections error: " + ex.getMessage());
             throw new FileStorageException(ServiceError.CONNERROR);
         }
+    }
+
+    public boolean isCompressed() {
+        return compressed;
+    }
+
+    public void setCompressed(boolean compressed) {
+        this.compressed = compressed;
     }
 }

@@ -4,12 +4,11 @@ import API.Codes.FileStorageException;
 import API.Codes.ServiceError;
 import API.Codes.MessageCode;
 import API.Messaging.*;
-import Common.Const;
-import Common.FileInputStreamEx;
-import Common.OutputStreamWrapper;
-import Common.Utils;
+import Common.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
@@ -33,8 +32,9 @@ public class BaseAPI {
 
     public ServiceError writeData(@NotNull String filePath, boolean isCompressed) throws FileStorageException {
         try {
+            logger.info("[" + Thread.currentThread().getId() + "] Start writing file. Buffer size: " + Const.bufferSize);
             OutputStreamWrapper os = connectionBundle.getOutputStreamWrapper();
-            FileInputStreamEx fis = new FileInputStreamEx(filePath);
+            FileInputStream fis = new FileInputStream(filePath);
             byte[] buf = new byte[Const.bufferSize];
             int read = 0;
             long len = fis.getChannel().size();
@@ -52,7 +52,7 @@ public class BaseAPI {
             WriteFileResponse writeFileResponse = new WriteFileResponse(MessageTransport.getResponse(writeFileRequest, connectionBundle));
             if(writeFileResponse.getCode() != ServiceError.OK) {
                 System.err.println("Something wrong! Code: " + writeFileResponse.getCode());
-                throw new FileStorageException(ServiceError.Critical);
+                throw new FileStorageException(writeFileResponse.getCode());
             }
 
             if(len <= remoteSize) {
@@ -60,22 +60,24 @@ public class BaseAPI {
                 return ServiceError.EXIST;
             }
             System.out.println("Hash: " + hash);
-            logger.info("Channel compression is " + (isCompressed ? "enabled" : "disabled"));
+            os.setCompressed(isCompressed);
             long readTotal = remoteSize;
             long readTotalPerSec = 0;
             float avgSpeed = 0;
             long startTime = 0;
             long endTime = 0;
             long avgEta = 0;
+            long rounds = 0;
             fis.skip(readTotal);
-            while ((read = fis.read(buf, 0, buf.length, false)) != -1) {
+            while ((read = fis.read(buf, 0, buf.length)) != -1) {
+                ++rounds;
                 if(endTime == 0) {
                     startTime = System.currentTimeMillis();
                 }
 
                 readTotal += read;
                 readTotalPerSec += read;
-                os.write(buf, 0, read, isCompressed);
+                os.write(buf, 0, read);
                 endTime = System.currentTimeMillis();
                 long delta = endTime - startTime;
                 if(delta >= 1000) {
@@ -88,8 +90,9 @@ public class BaseAPI {
                 System.out.printf("\r%d%% written, %.2f MB/s, ETA: %d s.", perc, avgSpeed, avgEta);
             }
 
-            System.out.println("Written total: " + readTotal + " bytes.");
+            System.out.println("\nWritten total: " + readTotal + " bytes for " + rounds + " rounds");
             fis.close();
+            os.flush();
             connectionBundle.close();
             if(readTotal != len) {
                 throw new FileStorageException(ServiceError.Failed);

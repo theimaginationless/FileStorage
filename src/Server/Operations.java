@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.logging.Logger;
 
@@ -31,23 +32,38 @@ public class Operations {
 
     public static Long writeFile(String fileName, InputStreamWrapper inputStreamWrapper, long offset, boolean isCompressed) {
         initStorage();
-        logger.info("[" + Thread.currentThread().getId() + "] Start writing file: '" + fileName + "'; offset: " + offset);
-        logger.info("Channel compression is " + (isCompressed ? "enabled" : "disabled"));
+        inputStreamWrapper.setCompressed(isCompressed);
+        logger.info("[" + Thread.currentThread().getId() + "] Start writing file: '" + fileName + "'; offset: " + offset + "; Buffer size: " + Const.bufferSize);
         byte[] buf = new byte[Const.bufferSize];
         int read;
         long totalReads = offset;
+        long rounds = 0;
+        RandomAccessFile raf = null;
         try {
-            RandomAccessFile raf = new RandomAccessFile(Const.storagePath + fileName, "rw");
+            raf = new RandomAccessFile(Const.storagePath + fileName, "rw");
             raf.seek(totalReads);
-            while ((read = inputStreamWrapper.read(buf, 0, buf.length, isCompressed)) != -1) {
+            while ((read = inputStreamWrapper.read(buf, 0, buf.length)) != -1) {
+                ++rounds;
                 totalReads += read;
                 raf.write(buf, 0, read);
             }
-            System.out.println("Written total: " + totalReads + " bytes.");
-            raf.close();
         } catch(IOException ex) {
-            ex.printStackTrace();
+            if(ex.getMessage().equals("Unexpected end of ZLIB input stream")) {
+                logger.info("[" + Thread.currentThread().getId() + "] We have EOFException: '" + ex.getMessage() + "', but ignore it for workaround");
+            } else {
+                ex.printStackTrace();
+            }
+        } finally {
+            try {
+                if(raf != null) {
+                    raf.close();
+                }
+            } catch(IOException ex) {
+                ex.printStackTrace();
+            }
         }
+        System.out.println("Written total: " + totalReads + " bytes for " + rounds + " rounds");
+
         return totalReads;
     }
 }
